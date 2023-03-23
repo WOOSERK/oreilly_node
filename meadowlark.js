@@ -1,15 +1,20 @@
 const handlers = require('./lib/handlers');
-const bodyParser = require('body-parser');
+const weatherMiddleware = require('./lib/middleware/weather');
 
 const express = require('express');
 const expressHandlebars = require('express-handlebars');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(bodyParser.urlencoded({ extended: false }));
-
 app.engine('handlebars', expressHandlebars({
   defaultLayout: 'main',
+  helpers: {
+    section: function(name, options) {
+      if(!this._sections) this._sections = {};
+      this._sections[name] = options.fn(this);
+      return null;
+    }
+  }
 }));
 
 app.set('view engine', 'handlebars');
@@ -20,23 +25,9 @@ app.get('/', handlers.home);
 
 app.get('/about', handlers.about);
 
-app.post('/process-contact', (req, res) => {
-  try {
-    if(req.body.simulateError) throw new Error('error saving contact!');
-    console.log(`received contact from ${req.body.name} <${req.body.email}>`);
-    res.format({
-      'text/html': () => res.redirect(303, '/thank-you'),
-      'application/json': () => res.json({success: true}),
-    });
-  } catch(err) {
-    console.error(`error processing contact from ${req.body.name} ` + `<${req.body.email}`);
-    res.format({
-      'text/html': () => res.redirect(303, '/contact-error'),
-      'application/json': () => res.status(500).json({
-        error: 'error saving contact information' }),
-    })
-  }
-});
+app.get('/section-test', handlers.sectionTest);
+
+app.use(weatherMiddleware);
 
 app.use(handlers.notFound)
 
